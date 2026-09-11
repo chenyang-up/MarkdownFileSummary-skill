@@ -1,0 +1,79 @@
+# MarkdownFileSummary 默认配置
+# 字段说明见 references/config-schema.md
+# 命令行参数（--root/--out 等）优先级高于本文件。
+#
+# 本技能不是「统计 + 拼接」：脚本负责发现、读取、解析与排版，
+# 摘要与综合必须由 AI 逐篇精读后撰写（见 references/summarization-guide.md）。
+
+version: 2
+
+input:
+  # 输入根目录，相对路径以「执行命令时的工作目录」为基准
+  root: "."
+  include:
+    - "**/*.md"
+    - "**/*.markdown"
+  exclude:
+    - "**/node_modules/**"
+    - "**/.git/**"
+    - "**/.workbuddy/**"
+    - "**/.idea/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/vendor/**"
+    - "**/_summary/**"
+    - "**/SUMMARY-*.md"
+    - "**/*.tmp.md"
+  min_bytes: 32
+  # 单文件体积上限，超过则跳过。默认 30 MiB = 31457280 字节
+  max_file_bytes: 31457280
+  # 单次最多处理文件数，超出部分按排序截断（0 表示不限制）
+  max_files: 30
+  follow_symlinks: false
+  sort: path_asc         # path_asc | mtime_desc | size_desc
+
+output:
+  # 输出目录：默认桌面（~/Desktop）。
+  # 若用户指定了输出位置，以用户指定的为准，优先级：
+  #   --out 完整文件路径  >  --out-dir 目录  >  本字段
+  # 取值规则：~ 开头或绝对路径按原样使用；相对路径相对 input.root 解析。
+  dir: "~/Desktop"
+  name_template: "SUMMARY-{scope}-{timestamp}.md"
+  scope: auto
+  timestamp_format: "%Y%m%d-%H%M%S"
+  on_exists: suffix      # suffix | overwrite | fail
+  frontmatter: true
+  title: auto
+
+content:
+  # digest = 全局综述 + 主题脉络 + 索引 + 分文件详细摘要（推荐，强调语义汇总）
+  # full   = digest + 合并正文附录
+  # overview = 仅全局综述与主题脉络
+  # merged = 仅合并正文（纯拼接，不推荐）
+  mode: digest
+
+  global:
+    include_themes: true    # 主题脉络（跨文件聚类）
+    include_findings: true  # 关键发现
+    include_conflicts: true # 分歧 / 待确认
+    include_actions: true   # 行动项 / 后续
+
+  index:
+    include_stats: true
+    include_index: true
+
+  per_file:
+    include_metadata: true
+    include_one_liner: true
+    include_key_points: true
+    include_details: true     # 重要细节 / 数据 / 事实
+    include_quotes: true      # 原文关键引用
+    include_conclusions: true # 结论 / 影响
+    include_original_headings: true
+    max_summary_chars: 2000   # 单篇摘要软上限
+    min_summary_chars: 200    # 质量下限：低于此长度会被 validate 标为「过简」
+
+  merged:
+    strip_frontmatter: true
+    separator: "\n\n---\n\n"
+    source_anchor: true
