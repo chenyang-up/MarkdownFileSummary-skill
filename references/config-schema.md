@@ -61,6 +61,8 @@
 | `per_file.include_quotes` | bool | true | 输出原文关键引用 |
 | `per_file.include_conclusions` | bool | true | 输出结论 / 影响 |
 | `per_file.include_original_headings` | bool | true | 输出原文标题大纲 |
+| `per_file.include_structure` | bool | true | 输出「文档结构信息」块（章节/代码块/表格/列表等，脚本自动生成） |
+| `per_file.include_section_points` | bool | false | 输出「章节要点」块（需 AI 在 summaries 里写 `sections`） |
 | `per_file.max_summary_chars` | int | 2000 | 单篇摘要渲染软上限 |
 | `per_file.min_summary_chars` | int | 200 | 质量下限，低于此值被 `validate` 标为过简 |
 | `merged.strip_frontmatter` | bool | true | 合并正文去掉原 frontmatter |

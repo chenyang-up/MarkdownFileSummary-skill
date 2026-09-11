@@ -42,5 +42,12 @@
 - 超限不报错，跳过并记入 `manifest.json.skipped`，必须向用户说明被跳过的文件。
 
 ## 数据结构
-- `summaries.json` = `global`{overview,key_findings,themes,conflicts,actions} + `files`{title,one_liner,summary,key_points,details,quotes,conclusions,tags,importance}
-- 配置 `config/default.yaml`，当前 `version: 2`，`content.mode` 默认 `digest`。
+- `summaries.json` = `global`{overview,key_findings,themes,conflicts,actions} + `files`{title,one_liner,summary,key_points,details,quotes,conclusions,tags,importance[,sections]}
+- 配置 `config/default.yaml`，当前 `version: 3`，`content.mode` 默认 `digest`。
+
+## 解析层（parse.py）约定
+- `parse_markdown()` 产出 20 个字段；`sections` 是章节树，**只存行号范围与层级路径，不存正文**（AI 按行号读原文）。
+- 架构：`_scan()` 单遍逐行状态机识别围栏/缩进代码 → 产出**掩码文本**（行内代码用等长空格覆盖，保住偏移与行号）→ 正则只作用于掩码文本。
+- 判定优先级：表格分隔行 > setext > hr。**单层识别**：引用块内部的围栏/表格/列表不递归，整体计入引用块（已在文档明确，勿过度承诺）。
+- 输出侧两个开关：`per_file.include_structure`（默认**开**，脚本自动生成的结构信息块）、`include_section_points`（默认**关**，需 AI 写 `sections`）。`validate` 不校验 `sections`。
+

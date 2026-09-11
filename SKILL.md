@@ -6,11 +6,11 @@ description_zh: >-
   读取指定目录下的多个 Markdown 文件，由 AI 逐篇精读全文后提炼要点，生成一份详细的汇总性Markdown 文件，包含全局综述、主题脉络、文件索引与分文件摘要。适用于汇总 Markdown、总结多个 md 文件、提炼多篇文档重点或生成文档综述等场景。（仅支持本地文件或者通过工具上传的附件文件，http/https 远程地址拒绝并终止）
 description_en: >-
   Reads multiple Markdown files from a given directory, has the AI read each file in full to extract key points, and produces one detailed aggregated Markdown file containing a global overview, thematic threads, a file index and per-file summaries. Use it for aggregating Markdown, summarizing multiple md files, or extracting highlights across documents.
-version: 2.0.0
+version: 2.2.0
 description: 读取指定目录下的多个 Markdown 文件，由 AI 逐篇精读原文后提炼要点，生成一份详细的汇总/总结性 Markdown 文件。当用户提出「汇总 Markdown」「总结多个 md 文件」「把目录里的笔记/文档合并成摘要」「对比多篇文档、提炼重点」「生成 md 综述或报告」等需求时使用。产出包含全局综述、主题脉络、文件索引与分文件详细摘要，可配置输入范围、输出命名与详略程度。
 license: MIT
 metadata:
-  version: 2.0.0
+  version: 2.2.0
   entrypoints:
     - scripts/main.py
   requires:
@@ -78,11 +78,22 @@ metadata:
    - 受 `input.max_file_bytes`（默认 30 MiB）与 `input.max_files`（默认 30）限制，
      被跳过的文件在 `manifest.json.skipped` 中列明原因，需在交付时告知用户。
 
-2. **读取与解析（extract）**：脚本输出每个文件的全文与结构（frontmatter、标题层级、代码块、正文）。
+2. **读取与解析（extract）**：脚本输出每个文件的全文与结构化信息。
    ```bash
    python3 "$SKILL_DIR/scripts/main.py" extract --root <目录> --out <临时目录>/extract.json
    ```
-   > 全文很大时，也可用所在工具的文件读取能力**直接逐篇读原文**；务必读完整篇，长文分段读。
+   每个文件除 frontmatter / 标题 / 正文外，还带以下解析结果，**用来指导你怎么读**：
+
+   | 字段 | 用途 |
+   | --- | --- |
+   | `sections` | 按标题切好的章节树，含 `line` / `end_line` / `subtree_end_line` / `parent` / `breadcrumb` / `chars`，**只存行号范围，不含正文** |
+   | `tables` / `lists` / `code_blocks` / `blockquotes` | 表格（行列与对齐）、列表（层级与任务勾选）、代码块（语言与是否闭合）、引用块 |
+   | `images` / `links` / `footnote_defs` / `link_ref_defs` | 图片、链接、脚注与引用式定义 |
+   | `char_count` / `words` / `inline_code_count` / `indented_code_blocks` / `hr_count` | 篇幅与计数 |
+
+   > **段落级信息只需按行号取正文**：`sections` 给的是范围，用所在工具的读文件能力按
+   > `line`–`end_line` 读原文即可，不必让脚本把正文复制一遍。
+   > 解析是**单层识别**：引用块内部的围栏 / 表格 / 列表不递归识别。
 
 3. **逐篇精读并撰写（你）**：为每篇写详细摘要，再做跨文件综合，写入 `summaries.json`。
    字段定义见 `references/output-format.md`，撰写标准见 **`references/summarization-guide.md`**（必读）。
@@ -90,6 +101,8 @@ metadata:
    - 每篇 `summary` 覆盖「主旨 → 结构脉络 → 关键论证 → 数据/结论」，不少于 `min_summary_chars`（默认 200 字）；
    - 每篇至少 3 条 `key_points`，写**判断**而非话题名；
    - `global.overview` 必须包含**至少两篇文档之间的对照关系**，不是各篇摘要的堆叠。
+   - **推荐按 `sections` 逐节精读**再合成整篇摘要（见 summarization-guide 第 3 节）；
+     想让输出带「章节要点」块，额外写 `sections: [{heading, points}]` 并开启对应开关。
 
 4. **校验（validate）**：检查覆盖度与详实度，未通过就回到第 3 步补写。
    ```bash
@@ -124,6 +137,8 @@ metadata:
 - **主题脉络**：把不同文档中同一主题的内容聚在一起，标注来源。
 - **文件索引**：文件、标题、重要度、行数与一句话摘要的对照表。
 - **分文件详细摘要**：每篇含一句话、多段内容摘要、核心要点、重要细节/数据、原文关键引用、结论/影响。
+- **文档结构信息**：脚本从解析结果自动生成的折叠块（章节分布、代码块语言、表格行列、列表层级与任务勾选、引用块、图片/链接/行内代码/脚注计数、篇幅），默认开启。
+- **章节要点**：AI 写的分节要点，默认关闭（需 `include_section_points: true` 且 summaries 里有 `sections`）。
 - **合并正文（附录）**：仅在 `full` 模式下出现。
 
 ## 关键约定
@@ -138,6 +153,7 @@ metadata:
 - **输出命名**：默认 `SUMMARY-{scope}-{timestamp}.md`，`scope` 取输入根目录名；重名追加序号。详见 `references/output-format.md`。
 - **配置**：集中在 `$SKILL_DIR/config/default.yaml`，字段见 `references/config-schema.md`；不传 `--config` 即使用它（按脚本位置解析，与 cwd 无关），命令行参数优先级高于配置。
 - **详略控制**：`per_file.max_summary_chars`（上限）与 `min_summary_chars`（下限，`validate` 依据）。
+- **结构信息开关**：`per_file.include_structure`（默认 **开**，脚本自动生成的「文档结构信息」块）与 `include_section_points`（默认 **关**，需 AI 写 `sections` 的「章节要点」块）。解析为**单层识别**，引用块内部结构不递归。
 - **可移植性**：`SKILL.md` 是规范入口；`scripts/` 仅用 Python 标准库；调用时用 `$SKILL_DIR` 绝对路径，不依赖 cwd；`adapters/` 提供 Cursor / Codex 等薄封装。
 
 ## 目录结构

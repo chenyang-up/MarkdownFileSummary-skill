@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 DEFAULTS = {
-    "version": 2,
+    "version": 3,
     "input": {
         "root": ".",
         "files": [],
@@ -60,6 +60,8 @@ DEFAULTS = {
             "include_quotes": True,
             "include_conclusions": True,
             "include_original_headings": True,
+            "include_structure": True,
+            "include_section_points": False,
             "max_summary_chars": 2000,
             "min_summary_chars": 200,
         },

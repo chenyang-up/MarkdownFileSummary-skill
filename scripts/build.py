@@ -163,6 +163,105 @@ def _index_section(cfg, manifest, summaries) -> str:
 
 # ---------------------------------------------------------------- 分文件
 
+def _level_breakdown(headings):
+    counts = {}
+    for h in headings:
+        counts[h["level"]] = counts.get(h["level"], 0) + 1
+    return "｜".join(f"H{k}×{v}" for k, v in sorted(counts.items()))
+
+
+def _structure_details(data, entry) -> str:
+    """文档结构信息（全部由脚本解析结果生成，不含任何摘要文字）。"""
+    if not data:
+        return ""
+    headings = data.get("headings") or []
+    code_blocks = data.get("code_blocks") or []
+    tables = data.get("tables") or []
+    lists = data.get("lists") or []
+    quotes = data.get("blockquotes") or []
+    images = data.get("images") or []
+    links = data.get("links") or []
+    foot_defs = data.get("footnote_defs") or []
+    foot_refs = data.get("footnote_refs") or []
+
+    items = []
+    if headings:
+        items.append(f"章节：{len(headings)} 个（{_level_breakdown(headings)}）")
+    elif (data.get("body") or "").strip():
+        items.append("章节：无标题（按全文单节处理）")
+
+    if code_blocks:
+        langs = {}
+        for cb in code_blocks:
+            key = cb.get("lang") or "无语言"
+            langs[key] = langs.get(key, 0) + 1
+        unclosed = sum(1 for cb in code_blocks if not cb.get("closed"))
+        detail = "｜".join(f"{k}×{v}" for k, v in sorted(langs.items()))
+        items.append(f"代码块：{len(code_blocks)} 个（{detail}｜未闭合 {unclosed}）")
+    if data.get("indented_code_blocks"):
+        items.append(f"缩进代码块：{data['indented_code_blocks']} 段")
+
+    if tables:
+        detail = "、".join(f"{t['row_count']}行×{t['col_count']}列" for t in tables)
+        items.append(f"表格：{len(tables)} 个（{detail}）")
+
+    if lists:
+        ordered = sum(1 for l in lists if l.get("ordered"))
+        tasks = sum(l.get("task_total") or 0 for l in lists)
+        checked = sum(l.get("task_checked") or 0 for l in lists)
+        depth = max((l.get("max_depth") or 1) for l in lists)
+        detail = f"{len(lists)} 个（有序 {ordered}｜无序 {len(lists) - ordered}｜最深 {depth} 层"
+        detail += f"｜任务 {checked}/{tasks}）" if tasks else "）"
+        items.append(f"列表：{detail}")
+
+    if quotes:
+        depth = max((q.get("max_depth") or 1) for q in quotes)
+        items.append(f"引用块：{len(quotes)} 处（最深 {depth} 层）")
+
+    tail = []
+    if images:
+        tail.append(f"图片 {len(images)} 张")
+    if links:
+        tail.append(f"链接 {len(links)} 个")
+    if data.get("inline_code_count"):
+        tail.append(f"行内代码 {data['inline_code_count']} 处")
+    if foot_defs or foot_refs:
+        tail.append(f"脚注 定义 {len(foot_defs)} / 引用 {len(foot_refs)}")
+    if data.get("hr_count"):
+        tail.append(f"分隔线 {data['hr_count']} 条")
+    if tail:
+        items.append("｜".join(tail))
+
+    if data.get("words"):
+        items.append(f"篇幅：约 {data['words']} 字｜{entry.get('lines', '?')} 行")
+
+    if not items:
+        return ""
+    return "\n".join(
+        ["<details><summary>文档结构信息</summary>", ""] + [f"- {x}" for x in items] + ["", "</details>"]
+    )
+
+
+def _section_points_block(info) -> str:
+    """章节要点（来自 summaries 的可选字段 sections，默认不渲染）。"""
+    secs = info.get("sections")
+    if not isinstance(secs, list) or not secs:
+        return ""
+    lines = ["**章节要点**：", ""]
+    for s in secs:
+        if isinstance(s, str):
+            lines.append(f"- {s}")
+            continue
+        if not isinstance(s, dict):
+            continue
+        head = str(s.get("heading") or "").strip() or "（未命名章节）"
+        lines.append(f"- **{head}**")
+        for p in _as_list(s.get("points")):
+            lines.append(f"  - {p}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _per_file_section(cfg, manifest, parsed, summaries) -> str:
     pf = cfg["content"]["per_file"]
     limit = int(pf.get("max_summary_chars") or 0)
@@ -194,8 +293,9 @@ def _per_file_section(cfg, manifest, parsed, summaries) -> str:
         summary = (info.get("summary") or "").strip()
         if not summary:
             hint = "（待 AI 精读原文后撰写详细摘要，禁止留空或仅做统计拼接）"
-            if f.get("lead"):
-                hint = f"> 原文开头（未经加工，仅供参考）：{_truncate(f['lead'], 120)}"
+            lead = parsed.get(rel, {}).get("lead")
+            if lead:
+                hint = f"> 原文开头（未经加工，仅供参考）：{_truncate(lead, 120)}"
             summary = hint
         lines += ["", "**内容摘要**：", "", _truncate(summary, limit), ""]
 
@@ -226,6 +326,16 @@ def _per_file_section(cfg, manifest, parsed, summaries) -> str:
                 lines += ["<details><summary>原文标题大纲</summary>", ""]
                 lines += [f"{'  ' * (h['level'] - 1)}- {h['text']}" for h in headings]
                 lines += ["", "</details>", ""]
+
+        if pf.get("include_structure", True):
+            block = _structure_details(parsed.get(rel, {}), f)
+            if block:
+                lines += [block, ""]
+
+        if pf.get("include_section_points", False):
+            block = _section_points_block(info)
+            if block:
+                lines += [block, ""]
         blocks.append("\n".join(lines))
     return "\n---\n\n".join(blocks)
 

@@ -5,7 +5,7 @@
 # 本技能不是「统计 + 拼接」：脚本负责发现、读取、解析与排版，
 # 摘要与综合必须由 AI 逐篇精读后撰写（见 references/summarization-guide.md）。
 
-version: 2
+version: 3
 
 input:
   # 输入根目录，相对路径以「执行命令时的工作目录」为基准
@@ -81,6 +81,8 @@ content:
     include_quotes: true      # 原文关键引用
     include_conclusions: true # 结论 / 影响
     include_original_headings: true
+    include_structure: true        # 文档结构信息块（章节/代码块/表格/列表等，脚本自动生成），默认开
+    include_section_points: false  # 章节要点块（需 AI 在 summaries 里写 sections），默认关
     max_summary_chars: 2000   # 单篇摘要软上限
     min_summary_chars: 200    # 质量下限：低于此长度会被 validate 标为「过简」
 

@@ -23,7 +23,9 @@ python3 "$SKILL_DIR/scripts/main.py" discover --root ./docs --out /tmp/md-summar
 # 注意：后续各步要传同一套输入参数（--root 或 --files）
 
 python3 "$SKILL_DIR/scripts/main.py" extract  --root ./docs --out /tmp/md-summary/extract.json
+# extract 含章节树 sections（行号范围 + 层级路径）与表格/列表/代码块/引用/链接/脚注等结构
 # AI 逐篇精读原文后撰写 summaries.json（结构见 references/output-format.md）
+# 推荐先看 sections 判断骨架、再逐节提炼后合成整篇摘要（见 references/summarization-guide.md 第 3 节）
 python3 "$SKILL_DIR/scripts/main.py" validate --root ./docs \
   --manifest /tmp/md-summary/manifest.json --summaries /tmp/md-summary/summaries.json
 python3 "$SKILL_DIR/scripts/main.py" assemble --root ./docs \

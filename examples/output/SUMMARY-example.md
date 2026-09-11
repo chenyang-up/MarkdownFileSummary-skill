@@ -1,6 +1,6 @@
 ---
 title: input 汇总
-generated_at: 2026-09-11 11:21:49
+generated_at: 2026-09-11 15:43:26
 source_root: /Users/ccccc/AI_skills/MarkdownFileSummary-skill/examples/input
 file_count: 3
 mode: digest
@@ -9,7 +9,7 @@ generator: markdown-file-summary
 
 # input 汇总
 
-> 来源目录：`/Users/ccccc/AI_skills/MarkdownFileSummary-skill/examples/input` ｜ 文件数：3 ｜ 生成时间：2026-09-11 11:21:49 ｜ 模式：digest（摘要由 AI 精读生成）
+> 来源目录：`/Users/ccccc/AI_skills/MarkdownFileSummary-skill/examples/input` ｜ 文件数：3 ｜ 生成时间：2026-09-11 15:43:26 ｜ 模式：digest（摘要由 AI 精读生成）
 
 ## 一、全局综述
 
@@ -130,6 +130,15 @@ generator: markdown-file-summary
 
 </details>
 
+<details><summary>文档结构信息</summary>
+
+- 章节：3 个（H1×1｜H2×2）
+- 列表：1 个（有序 0｜无序 1｜最深 1 层）
+- 行内代码 1 处
+- 篇幅：约 83 字｜18 行
+
+</details>
+
 ---
 
 <a id="02-技术选型.md"></a>
@@ -180,6 +189,13 @@ generator: markdown-file-summary
 
 </details>
 
+<details><summary>文档结构信息</summary>
+
+- 章节：4 个（H1×1｜H2×3）
+- 篇幅：约 89 字｜13 行
+
+</details>
+
 ---
 
 <a id="03-里程碑.md"></a>
@@ -223,5 +239,13 @@ generator: markdown-file-summary
 
 - 里程碑
   - 后续
+
+</details>
+
+<details><summary>文档结构信息</summary>
+
+- 章节：2 个（H1×1｜H2×1）
+- 表格：1 个（3行×3列）
+- 篇幅：约 64 字｜11 行
 
 </details>

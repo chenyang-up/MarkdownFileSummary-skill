@@ -85,9 +85,32 @@ generator: markdown-file-summary
 | `quotes` | 原文关键引用 | `include_quotes` |
 | `conclusions` | 结论 / 影响 | `include_conclusions` |
 | 原文标题大纲 | 可折叠 | `include_original_headings` |
+| 文档结构信息 | 脚本解析出的章节/代码块/表格/列表/链接等统计，可折叠 | `include_structure`（默认开） |
+| 章节要点 | AI 为各章节写的要点，取自 `files.<rel>.sections` | `include_section_points`（默认关） |
 
 超过 `max_summary_chars` 的摘要会截断；低于 `min_summary_chars` 会被 `validate` 标为过简。
 **摘要字段为空时，脚本会显式输出「待补充」而不是用正文首段冒充摘要。**
+
+#### 文档结构信息块
+
+完全由脚本从解析结果生成，不含任何摘要文字；各项为 0 时省略对应行，全部为空时整块不出现。
+渲染示例：
+
+```
+<details><summary>文档结构信息</summary>
+
+- 章节：5 个（H1×1｜H2×3｜H3×1）
+- 代码块：2 个（python×1｜无语言×1｜未闭合 0）
+- 表格：1 个（3行×3列）
+- 列表：4 个（有序 1｜无序 3｜最深 3 层｜任务 2/3）
+- 引用块：2 处（最深 2 层）
+- 图片 1 张｜链接 6 个｜行内代码 12 处｜脚注 定义 1 / 引用 2｜分隔线 1 条
+- 篇幅：约 1234 字｜42 行
+
+</details>
+```
+
+> 解析是**单层识别**：引用块内部的围栏 / 表格 / 列表不递归识别，整体计入引用块。
 
 ### 合并正文（`content.merged`）
 
@@ -121,12 +144,18 @@ AI 精读后按此结构填写，`files` 的键为相对路径：
       "quotes": ["原文关键句"],
       "conclusions": ["结论或影响"],
       "tags": ["分类"],
-      "importance": "high"
+      "importance": "high",
+      "sections": [
+        {"heading": "小节标题", "points": ["该节要点"]}
+      ]
     }
   }
 }
 ```
 
 - `importance` 取值 `high` / `medium` / `low`，用于索引表排序参考。
+- `sections` 为**可选**字段，用于 `include_section_points` 开启时渲染「章节要点」。
+  用列表而非以标题为 key 的对象，避免同名标题互相覆盖。章节名建议对齐 `extract` 输出里
+  `sections[].breadcrumb`，便于对照。**`validate` 不校验该字段**，缺失不报错、不阻塞。
 - 未出现在 `files` 中的文件会被 `validate` 报为「缺少摘要」。
 - 撰写要求见 [summarization-guide.md](summarization-guide.md)。

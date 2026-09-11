@@ -19,9 +19,11 @@ alwaysApply: false
 
 1. `python3 "$SKILL_DIR/scripts/main.py" discover --root <目录> --out <临时目录>/manifest.json`
 2. `python3 "$SKILL_DIR/scripts/main.py" extract --root <目录> --out <临时目录>/extract.json`
-   （长文可改用所在工具的读文件能力直接逐篇读原文，务必读完整篇）
+   （输出含章节树 `sections`（行号范围 + 层级路径）、表格 / 列表 / 代码块 / 引用 / 链接 / 脚注等结构。
+   长文按 `sections` 的行号范围逐节读原文，务必读完整篇）
 3. 逐篇精读原文，为每篇撰写「详细摘要 + 核心要点 + 重要细节 + 关键引用 + 结论」，再做跨文件综述，
    写入 `summaries.json`（结构见 `references/output-format.md`）。
+   推荐先看 `sections` 判断骨架、再逐节提炼后合成整篇摘要（见 `references/summarization-guide.md` 第 3 节）。
 4. `python3 "$SKILL_DIR/scripts/main.py" validate --root <目录> --manifest <临时目录>/manifest.json --summaries <临时目录>/summaries.json`
    未通过则回到第 3 步补写。
 5. `python3 "$SKILL_DIR/scripts/main.py" assemble --root <目录> --manifest <临时目录>/manifest.json --summaries <临时目录>/summaries.json`
