@@ -14,7 +14,8 @@ alwaysApply: false
 **路径约定**：`$SKILL_DIR` = 本技能根目录（skill 安装位置，例如 `~/.workbuddy/skills/markdown-file-summary`）。
 所有命令用绝对路径调用，**与当前工作目录无关**；未传 `--config` 时自动使用技能自带的 `config/default.yaml`。
 
-执行步骤：
+执行步骤（输入二选一：`--root <目录>` 扫目录；`--files <文件1> <文件2>` 用显式清单，
+用户点名文件或拖入附件时用后者。清单优先于目录，只支持本地文件。**后续各步要传同一套输入参数**）：
 
 1. `python3 "$SKILL_DIR/scripts/main.py" discover --root <目录> --out <临时目录>/manifest.json`
 2. `python3 "$SKILL_DIR/scripts/main.py" extract --root <目录> --out <临时目录>/extract.json`

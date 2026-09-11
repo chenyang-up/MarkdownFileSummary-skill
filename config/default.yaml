@@ -10,6 +10,17 @@ version: 2
 input:
   # 输入根目录，相对路径以「执行命令时的工作目录」为基准
   root: "."
+
+  # 显式文件清单：用户在工具里填写的文件地址 + 工具添加的附件本地地址，两者合并去重。
+  # 仅支持本地文件；http/https 远程地址会被拒绝并报错。
+  # 命令行 --files 会追加到这里。清单优先于 root（见 merge_files_and_root）。
+  files: []
+
+  # 清单与目录同时存在时：
+  #   false（默认）= 只用清单，忽略目录
+  #   true         = 两者合并（按绝对路径去重）
+  merge_files_and_root: false
+
   include:
     - "**/*.md"
     - "**/*.markdown"

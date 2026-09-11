@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 _UNSAFE_RE = re.compile(r"[^\w\u4e00-\u9fff.-]+")
 _CN_NUM = "一二三四五六七八九十"
@@ -172,9 +173,16 @@ def _per_file_section(cfg, manifest, parsed, summaries) -> str:
         lines = [f'<a id="{slugify(rel)}"></a>', "", f"#### {i}. {info.get('title') or rel}", ""]
 
         if pf.get("include_metadata", True):
-            meta = f"- 路径：`{rel}` ｜ {f['lines']} 行 ｜ {human_size(f['size'])} ｜ 修改于 {f['mtime']}"
+            if f.get("source") == "files":
+                abs_path = str(f.get("abs_path") or rel)
+                path_txt = f"[`{Path(abs_path).name}`](file://{quote(abs_path)})"
+            else:
+                path_txt = f"`{rel}`"
+            meta = f"- 路径：{path_txt} ｜ {f['lines']} 行 ｜ {human_size(f['size'])} ｜ 修改于 {f['mtime']}"
             if info.get("importance"):
                 meta += f" ｜ 重要度：{info['importance']}"
+            if f.get("source") == "files":
+                meta += " ｜ 来源：显式清单"
             lines.append(meta)
         if info.get("tags"):
             lines.append("- 标签：" + "、".join(str(t) for t in _as_list(info["tags"])))

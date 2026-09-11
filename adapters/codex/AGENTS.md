@@ -17,7 +17,11 @@
 ```bash
 SKILL_DIR=/path/to/MarkdownFileSummary-skill   # 例如 ~/.workbuddy/skills/markdown-file-summary
 
+# 输入二选一：扫目录 / 用显式清单（用户点名文件或拖入附件时用 --files；清单优先于目录，仅本地文件）
 python3 "$SKILL_DIR/scripts/main.py" discover --root ./docs --out /tmp/md-summary/manifest.json
+# python3 "$SKILL_DIR/scripts/main.py" discover --files a.md /data/b.md --out /tmp/md-summary/manifest.json
+# 注意：后续各步要传同一套输入参数（--root 或 --files）
+
 python3 "$SKILL_DIR/scripts/main.py" extract  --root ./docs --out /tmp/md-summary/extract.json
 # AI 逐篇精读原文后撰写 summaries.json（结构见 references/output-format.md）
 python3 "$SKILL_DIR/scripts/main.py" validate --root ./docs \

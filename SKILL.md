@@ -3,7 +3,7 @@ name: markdown-file-summary
 display_name: 多文档汇总助手
 display_name_en: Markdown File Summary
 description_zh: >-
-  读取指定目录下的多个 Markdown 文件，由 AI 逐篇精读全文后提炼要点，生成一份详细的汇总性Markdown 文件，包含全局综述、主题脉络、文件索引与分文件摘要。适用于汇总 Markdown、总结多个 md 文件、提炼多篇文档重点或生成文档综述等场景。
+  读取指定目录下的多个 Markdown 文件，由 AI 逐篇精读全文后提炼要点，生成一份详细的汇总性Markdown 文件，包含全局综述、主题脉络、文件索引与分文件摘要。适用于汇总 Markdown、总结多个 md 文件、提炼多篇文档重点或生成文档综述等场景。（仅支持本地文件或者通过工具上传的附件文件，http/https 远程地址拒绝并终止）
 description_en: >-
   Reads multiple Markdown files from a given directory, has the AI read each file in full to extract key points, and produces one detailed aggregated Markdown file containing a global overview, thematic threads, a file index and per-file summaries. Use it for aggregating Markdown, summarizing multiple md files, or extracting highlights across documents.
 version: 2.0.0
@@ -39,10 +39,11 @@ metadata:
 ## 何时使用
 
 - 用户想汇总/总结/合并某个目录下的一批 `.md` 文件。
+- 用户**点名了几篇具体文档**（填了多个文件地址、或拖入了多个附件），要求汇总成一篇。
 - 用户想提炼多篇文档的重点、做横向对比或形成综述。
 - 用户想把零散笔记整理成一份结构化、可独立阅读的报告。
 
-不适用：单个文件的改写、翻译、格式转换（直接编辑该文件即可）。
+不适用：单个文件的改写、翻译、格式转换（直接编辑该文件即可）；远程 URL 抓取（仅支持本地文件）。
 
 ## 路径约定（重要）
 
@@ -60,12 +61,22 @@ metadata:
 
 五步。前两步是脚本的活，第三步是**你的核心工作**。
 
-1. **发现（discover）**：按筛选规则列出待处理文件。
+1. **发现（discover）**：确定汇总哪些文件。两种来源，**清单优先于目录**：
+
    ```bash
+   # 目录来源：汇总整个目录（递归）
    python3 "$SKILL_DIR/scripts/main.py" discover --root <目录> --out <临时目录>/manifest.json
+
+   # 清单来源：用户点名了具体文件、或拖入了附件（可重复传、支持逗号分隔）
+   python3 "$SKILL_DIR/scripts/main.py" discover \
+     --files <文件1> <文件2> --files "<文件3>,<文件4>" --out <临时目录>/manifest.json
    ```
-   受 `input.max_file_bytes`（默认 30 MiB）与 `input.max_files`（默认 30）限制，
-   被跳过的文件在 `manifest.json.skipped` 中列明原因，需在交付时告知用户。
+
+   - 用户**同时**给了清单与目录时：默认**只用清单**（`input.merge_files_and_root: true` 可改为合并）。
+   - **只支持本地文件**：`http://` / `https://`（含 OSS 地址）会被拒绝并终止；路径不存在同理。
+   - 附件这类 root 外的文件，其**本地绝对路径**作为唯一标识写入 manifest，并在最终汇总里渲染成 `file://` 链接。
+   - 受 `input.max_file_bytes`（默认 30 MiB）与 `input.max_files`（默认 30）限制，
+     被跳过的文件在 `manifest.json.skipped` 中列明原因，需在交付时告知用户。
 
 2. **读取与解析（extract）**：脚本输出每个文件的全文与结构（frontmatter、标题层级、代码块、正文）。
    ```bash
@@ -117,6 +128,7 @@ metadata:
 
 ## 关键约定
 
+- **输入来源**：显式文件清单（`--files` / `input.files`，含用户填写的地址与附件本地地址）> 目录扫描（`input.root`）。清单存在时默认忽略目录；`input.merge_files_and_root: true` 可改为合并。**仅支持本地文件，http/https 远程地址拒绝并终止。**详见 `references/filter-rules.md`。
 - **输入筛选**：默认递归匹配 `**/*.md`、`**/*.markdown`，排除 `node_modules/.git/dist/build/vendor/_summary` 等，忽略小于 `min_bytes` 的空文件。详见 `references/filter-rules.md`。
 - **输入上限**（均可配置）：
   - `input.max_file_bytes`：**单个文件不得超过 30 MiB**（默认 31457280 字节），超限跳过，不读取内容；

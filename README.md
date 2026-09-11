@@ -9,6 +9,7 @@
 - **详细的分篇摘要**：每篇含一句话、多段内容摘要、核心要点、重要细节/数据、原文关键引用、结论/影响。
 - **跨文件综合**：全局综述 + 主题脉络 + 分歧/待确认 + 行动项，而非各篇摘要的堆叠。
 - **质量校验**：`validate` 检查覆盖度与详实度，摘要过简会明确指出。
+- **两种输入来源**：给目录就扫目录；用户点名了文件或拖入了附件，就用 `--files` 传清单（可跨目录、自动去重）。清单优先于目录，且**只读本地文件**——`http://` / `https://` 地址会被拒绝并终止。
 - **输入筛选**：glob 规则控制范围，自动跳过依赖/构建/缓存目录与空文件。
 - **输入上限**：单文件默认不超过 **30 MiB**（`input.max_file_bytes`），单次最多 **30 个文件**（`input.max_files`）；超限文件跳过并记入 `manifest.json.skipped`，命令行会提示。
 - **输出位置**：默认写入**桌面 `~/Desktop`**；可用 `--out`（完整路径）或 `--out-dir`（目录）指定，用户指定优先。
@@ -62,8 +63,13 @@ cp -R /path/to/MarkdownFileSummary-skill ~/.workbuddy/skills/markdown-file-summa
 ```bash
 SKILL_DIR=/path/to/MarkdownFileSummary-skill   # 例如 ~/.workbuddy/skills/markdown-file-summary
 
-# 1. 发现待汇总的 Markdown 文件
+# 1. 发现待汇总的 Markdown 文件（二选一）
+#    1a. 给了目录：扫描整个目录
 python3 "$SKILL_DIR/scripts/main.py" discover --root ./docs --out /tmp/md-summary/manifest.json
+#    1b. 用户点名了文件 / 拖入了附件：用清单（可重复传、支持逗号分隔，跨目录也行）
+python3 "$SKILL_DIR/scripts/main.py" discover \
+  --files ~/Desktop/a.md /data/reports/b.md --files "/tmp/c.md,/tmp/d.md" \
+  --out /tmp/md-summary/manifest.json
 
 # 2. 读取全文与结构（供 AI 精读）
 python3 "$SKILL_DIR/scripts/main.py" extract --root ./docs --out /tmp/md-summary/extract.json
@@ -79,6 +85,9 @@ python3 "$SKILL_DIR/scripts/main.py" validate --root ./docs \
 python3 "$SKILL_DIR/scripts/main.py" assemble --root ./docs \
   --manifest /tmp/md-summary/manifest.json --summaries /tmp/md-summary/summaries.json
 ```
+
+> **注意**：每个子命令都会自行「发现」一次输入，所以第 1 步用了哪套输入参数
+> （`--root` 或 `--files`），后续几步要**传同一套**，否则它们会按另一套输入重新枚举文件。
 
 指定输出位置时，用 `--out` 或 `--out-dir` 覆盖默认值：
 

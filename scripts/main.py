@@ -44,9 +44,21 @@ def _load_cfg(args):
     """加载配置：--config 优先，否则用技能自带的 config/default.yaml。
 
     默认值按脚本位置解析为绝对路径，因此从任意工作目录调用都能命中，
-    不依赖当前工作目录。
+    不依赖当前工作目录。命令行 --files 会追加进 input.files。
     """
-    return load_config(args.config or str(DEFAULT_CONFIG))
+    cfg = load_config(args.config or str(DEFAULT_CONFIG))
+    cli_files = []
+    for group in (getattr(args, "files", None) or []):
+        cli_files.extend(group if isinstance(group, (list, tuple)) else [group])
+    if cli_files:
+        existing = list(cfg["input"].get("files") or [])
+        cfg["input"]["files"] = existing + cli_files
+    return cfg
+
+
+def _info(msg: str = ""):
+    """人读信息一律走 stderr，保证 stdout 只有机器可读输出（`--out -` 时是纯 JSON）。"""
+    print(msg, file=sys.stderr)
 
 
 def _dump(data, out: str):
@@ -57,7 +69,7 @@ def _dump(data, out: str):
     target = Path(out)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(text + "\n", encoding="utf-8")
-    print(f"已写入 {out}")
+    _info(f"已写入 {out}")
 
 
 def _load_json(path: str):
@@ -76,8 +88,17 @@ def _discover(cfg, root, quiet=False):
     """发现文件；有文件被排除时打印一行提示。"""
     root_path, files, skipped = collect.discover(cfg, root)
     if skipped and not quiet:
-        print(collect.summarize_skipped(skipped))
+        _info(collect.summarize_skipped(skipped))
     return root_path, files, skipped
+
+
+def _input_source_desc(cfg) -> str:
+    explicit = [x for x in (cfg["input"].get("files") or []) if str(x).strip()]
+    if explicit and cfg["input"].get("merge_files_and_root"):
+        return f"显式文件清单 + 目录扫描（合并）"
+    if explicit:
+        return "显式文件清单（忽略目录）"
+    return "目录扫描"
 
 
 def cmd_discover(args):
@@ -86,6 +107,7 @@ def cmd_discover(args):
     _dump(
         {
             "root": str(root),
+            "input_source": _input_source_desc(cfg),
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "count": len(files),
             "skipped_count": len(skipped),
@@ -99,7 +121,10 @@ def cmd_discover(args):
         max_bytes = int(limits.get("max_file_bytes") or 0)
         max_files = int(limits.get("max_files") or 0)
         size_txt = build.human_size(max_bytes) if max_bytes else "不限"
-        print(f"发现 {len(files)} 个 Markdown 文件（上限：单文件 {size_txt}，数量 {max_files or '不限'}）")
+        _info(
+            f"发现 {len(files)} 个 Markdown 文件"
+            f"（来源：{_input_source_desc(cfg)}；上限：单文件 {size_txt}，数量 {max_files or '不限'}）"
+        )
 
 
 def cmd_extract(args):
@@ -108,7 +133,7 @@ def cmd_extract(args):
     parsed = {f["rel_path"]: parse.parse_file(f["abs_path"]) for f in files}
     _dump({"root": str(root), "count": len(parsed), "files": parsed}, args.out)
     if args.out != "-":
-        print(
+        _info(
             f"已解析 {len(parsed)} 个文件的结构与正文。"
             "请逐篇精读正文，按 references/summarization-guide.md 撰写 summaries.json。"
         )
@@ -129,11 +154,11 @@ def cmd_validate(args):
     manifest = _load_json(args.manifest)["files"] if args.manifest else files
     issues = build.validate(cfg, manifest, _load_summaries(args.summaries))
     if not issues:
-        print(f"校验通过：{len(manifest)} 个文件均已有达标摘要与全局综述")
+        _info(f"校验通过：{len(manifest)} 个文件均已有达标摘要与全局综述")
         return 0
-    print(f"发现 {len(issues)} 个问题：")
+    _info(f"发现 {len(issues)} 个问题：")
     for item in issues:
-        print(f"  - {item}")
+        _info(f"  - {item}")
     return 1
 
 
@@ -146,7 +171,7 @@ def cmd_assemble(args):
 
     issues = build.validate(cfg, manifest, summaries)
     if issues:
-        print(f"提示：{len(issues)} 项摘要尚未达标（详见 validate），输出将标注待补充。")
+        _info(f"提示：{len(issues)} 项摘要尚未达标（详见 validate），输出将标注待补充。")
 
     doc = build.build_document(cfg, root, manifest, parsed, summaries)
     if args.out and args.out != "-":
@@ -156,7 +181,7 @@ def cmd_assemble(args):
     else:
         target = build.compute_output_path(cfg, root, len(manifest))
         target.write_text(doc, encoding="utf-8")
-    print(f"汇总完成：{target}（{len(manifest)} 个文件，{len(doc)} 字符）")
+    _info(f"汇总完成：{target}（{len(manifest)} 个文件，{len(doc)} 字符）")
     return 0
 
 
@@ -169,9 +194,21 @@ def build_parser():
         default=None,
         help="配置文件路径；省略则用技能自带的 config/default.yaml（按脚本位置解析，与 cwd 无关）",
     )
+    common.add_argument(
+        "--files",
+        action="append",
+        nargs="+",
+        default=None,
+        metavar="PATH",
+        help=(
+            "显式文件清单（可重复传，支持一次给多个）：用户填写的文件地址、工具添加附件的本地地址。"
+            "仅支持本地文件，http/https 远程地址会被拒绝。给清单后默认忽略 --root 目录"
+            "（配置 input.merge_files_and_root 可改为合并）"
+        ),
+    )
 
     p1 = sub.add_parser("discover", parents=[common], help="发现并筛选输入文件")
-    p1.add_argument("--root", default=None, help="输入根目录（覆盖配置）")
+    p1.add_argument("--root", default=None, help="输入根目录（覆盖配置）；给了 --files 时默认不扫描它")
     p1.add_argument("--out", default="manifest.json", help="manifest 输出路径，- 表示标准输出")
     p1.set_defaults(func=cmd_discover)
 
@@ -203,7 +240,16 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except collect.InputError as exc:
+        _info(f"输入有误，已终止（{len(exc.items)} 项）：")
+        for item in exc.items:
+            _info(f"  - {item}")
+        return 1
+    except NotADirectoryError as exc:
+        _info(f"输入有误，已终止：{exc}")
+        return 1
 
 
 if __name__ == "__main__":

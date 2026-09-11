@@ -13,6 +13,8 @@ DEFAULTS = {
     "version": 2,
     "input": {
         "root": ".",
+        "files": [],
+        "merge_files_and_root": False,
         "include": ["**/*.md", "**/*.markdown"],
         "exclude": [
             "**/node_modules/**",
@@ -80,10 +82,37 @@ def _strip_comment(line: str) -> str:
     return line
 
 
+def _split_flow(body: str) -> list:
+    """按顶层逗号切分 flow 序列内容，忽略引号内的逗号。"""
+    items, buf, quote = [], [], None
+    for ch in body:
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+            buf.append(ch)
+        elif ch == ",":
+            items.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    if buf:
+        items.append("".join(buf))
+    return [i.strip() for i in items if i.strip()]
+
+
 def _coerce(scalar: str):
     s = scalar.strip()
     if s == "" or s in ("null", "~", "None"):
         return None
+    # flow 序列：[] / [a, b] / ["a", "b"]（配置示例里常见，必须支持）
+    if len(s) >= 2 and s[0] == "[" and s[-1] == "]":
+        inner = s[1:-1].strip()
+        return [] if not inner else [_coerce(x) for x in _split_flow(inner)]
+    if s == "{}":
+        return {}
     if s.lower() in ("true", "false"):
         return s.lower() == "true"
     if re.fullmatch(r"-?\d+", s):

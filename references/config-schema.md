@@ -15,8 +15,10 @@
 
 | 字段 | 类型 | 默认 | 说明 |
 | --- | --- | --- | --- |
-| `root` | str | `.` | 输入根目录，相对路径基于执行命令时的工作目录 |
-| `include` | list[str] | `["**/*.md","**/*.markdown"]` | 纳入的 glob |
+| `root` | str | `.` | 输入根目录，相对路径基于执行命令时的工作目录；**给了 `files` 时默认不扫描它** |
+| `files` | list[str] | `[]` | 显式文件清单：填写的文件地址 + 附件本地地址。仅本地文件，远程地址报错。非空时优先于 `root` |
+| `merge_files_and_root` | bool | false | `files` 与 `root` 同时存在时：false 只用清单，true 合并（按绝对路径去重） |
+| `include` | list[str] | `["**/*.md","**/*.markdown"]` | 纳入的 glob（显式清单也走这个校验） |
 | `exclude` | list[str] | 见默认文件 | 排除的 glob，优先级高于 include |
 | `min_bytes` | int | 32 | 最小字节数，过滤空文件 |
 | `max_file_bytes` | int | 31457280（30 MiB） | 单文件体积上限，超过则跳过；`0` 为不限 |
